@@ -1,0 +1,266 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - asterisk
+  - certbot
+  - ufw
+  - jq
+  - curl
+  - dnsutils
+
+write_files:
+  - path: /etc/asterisk/meta-guide/meta-sip-values.conf
+    permissions: "0600"
+    owner: root:root
+    content: |
+      WA_BUSINESS_PHONE_NUMBER="${wa_business_phone_number}"
+      SIP_UA_PASSWORD="${sip_ua_password}"
+      META_SIP_USER_PASSWORD="${meta_sip_user_password}"
+      DOMAIN_NAME="${domain_name}"
+      SIP_TLS_PORT="${sip_tls_port}"
+      LOCAL_NET="${local_net}"
+      RTP_START="${rtp_udp_start}"
+      RTP_END="${rtp_udp_end}"
+
+  - path: /usr/local/bin/setup-asterisk-certs.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      FQDN="${fqdn}"
+      EMAIL="${letsencrypt_email}"
+      CERT_DIR="/var/lib/asterisk/certs"
+
+      mkdir -p "$${CERT_DIR}"
+
+      if [[ -z "$${FQDN}" ]]; then
+        echo "[cert-setup] FQDN not set. Creating self-signed cert fallback."
+        openssl req -x509 -nodes -newkey rsa:2048 -days 7 \
+          -subj "/CN=asterisk.local" \
+          -keyout "$${CERT_DIR}/cer.key" \
+          -out "$${CERT_DIR}/fullchain.cer"
+        chmod 640 "$${CERT_DIR}/cer.key" "$${CERT_DIR}/fullchain.cer"
+        chown asterisk:asterisk "$${CERT_DIR}/cer.key" "$${CERT_DIR}/fullchain.cer"
+        exit 0
+      fi
+
+      if certbot certonly --standalone --non-interactive --agree-tos --email "$${EMAIL}" -d "$${FQDN}"; then
+        cp "/etc/letsencrypt/live/$${FQDN}/privkey.pem" "$${CERT_DIR}/cer.key"
+        cp "/etc/letsencrypt/live/$${FQDN}/fullchain.pem" "$${CERT_DIR}/fullchain.cer"
+        chown asterisk:asterisk "$${CERT_DIR}/cer.key" "$${CERT_DIR}/fullchain.cer"
+      else
+        echo "[cert-setup] certbot failed. Creating self-signed cert fallback."
+        openssl req -x509 -nodes -newkey rsa:2048 -days 7 \
+          -subj "/CN=$${FQDN}" \
+          -keyout "$${CERT_DIR}/cer.key" \
+          -out "$${CERT_DIR}/fullchain.cer"
+        chmod 640 "$${CERT_DIR}/cer.key" "$${CERT_DIR}/fullchain.cer"
+        chown asterisk:asterisk "$${CERT_DIR}/cer.key" "$${CERT_DIR}/fullchain.cer"
+      fi
+
+  - path: /usr/local/bin/render-asterisk-configs.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      source /etc/asterisk/meta-guide/meta-sip-values.conf
+
+      EXTERNAL_IP="$(curl -s -H Metadata:true 'http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text' || true)"
+      if [[ -z "$${EXTERNAL_IP}" ]]; then
+        EXTERNAL_IP="0.0.0.0"
+      fi
+
+      cat > /etc/asterisk/extensions.conf <<EOF
+      [c2b-sub-dial]
+      exten => s,1,NoOp()
+        same => n,Read(Digits,incoming_welcome,0,,5,500)
+        same => n,Dial(PJSIP/\$${Digits})
+        same => n,Hangup()
+
+      [whatsapp]
+      exten => _10XX,1,NoOp()
+        same => n,Dial(PJSIP/\$${EXTEN})
+        same => n,Hangup()
+
+      ;Extension for B2C business call through Meta SIP gateway
+      exten => b2c-sip,1,NoOp()
+        same => n,Read(Digits,outgoing_welcome,0,,5,500)
+        same => n,Dial(PJSIP/whatsapp/sip:+\$${Digits}@wa.meta.vc)
+
+      ;Extension to handle incoming invite requests from Meta SIP gateway to <wa-business-phone-number>@<asterisk-sip-server-dns>
+      exten => _+$${WA_BUSINESS_PHONE_NUMBER},1,Goto(c2b-sub-dial,s,1)
+      EOF
+
+      cat > /etc/asterisk/pjsip.conf <<EOF
+      [transport-tls]
+      type=transport
+      protocol=tls
+      bind=0.0.0.0:$${SIP_TLS_PORT}
+      cert_file=/var/lib/asterisk/certs/fullchain.cer
+      priv_key_file=/var/lib/asterisk/certs/cer.key
+      method=sslv23
+      allow_wildcard_certs=yes
+      external_media_address=$${EXTERNAL_IP}
+      external_signaling_address=$${EXTERNAL_IP}
+      local_net=$${LOCAL_NET}
+
+      [sdes_endpointtemplate](!)
+      type=endpoint
+      context=whatsapp
+      disallow=all
+      allow=OPUS
+      direct_media=no
+      rtp_symmetric=yes
+      force_rport=yes
+      rewrite_contact=no
+      media_use_received_transport=yes
+      media_encryption=sdes
+
+      [authtemplate](!)
+      type=auth
+      auth_type=userpass
+      password=$${SIP_UA_PASSWORD}
+
+      [aortemplate](!)
+      type=aor
+      max_contacts=1
+      remove_existing=yes
+
+      [1000](sdes_endpointtemplate)
+      auth=1000_auth
+      aors=1000
+
+      [1000_auth](authtemplate)
+      username=1000
+
+      [1000](aortemplate)
+
+      [1001](sdes_endpointtemplate)
+      auth=1001_auth
+      aors=1001
+
+      [1001_auth](authtemplate)
+      username=1001
+
+      [1001](aortemplate)
+
+      [1002](sdes_endpointtemplate)
+      auth=1002_auth
+      aors=1002
+
+      [1002_auth](authtemplate)
+      username=1002
+
+      [1002](aortemplate)
+
+      [1003](sdes_endpointtemplate)
+      auth=1003_auth
+      aors=1003
+
+      [1003_auth](authtemplate)
+      username=1003
+
+      [1003](aortemplate)
+
+      [1004](sdes_endpointtemplate)
+      auth=1004_auth
+      aors=1004
+
+      [1004_auth](authtemplate)
+      username=1004
+
+      [1004](aortemplate)
+
+      [1005](sdes_endpointtemplate)
+      auth=1005_auth
+      aors=1005
+
+      [1005_auth](authtemplate)
+      username=1005
+
+      [1005](aortemplate)
+
+      ;This endpoint maps to an IVR for C2B calls
+      [c2b-sip](sdes_endpointtemplate)
+
+      [c2b-sip](aortemplate)
+
+      [c2b-sip]
+      type=identify
+      endpoint=c2b-sip
+      match_header=X-FB-External-Domain: wa.meta.vc
+
+      ;special endpoint for Meta SIP Gateway integration
+      ;This endpoint maps to an IVR for B2C calls
+      [b2c-sip](sdes_endpointtemplate)
+
+      [b2c-sip](aortemplate)
+
+      [whatsapp](sdes_endpointtemplate)
+      type=endpoint
+      transport=transport-tls
+      disallow=all
+      allow=opus,ulaw,alaw
+      aors=whatsapp
+      from_user=+$${WA_BUSINESS_PHONE_NUMBER}
+      from_domain=$${DOMAIN_NAME}
+      outbound_auth=whatsapp
+
+      [whatsapp]
+      type=aor
+      contact=sip:wa.meta.vc
+
+      [whatsapp]
+      type=auth
+      auth_type=userpass
+      password=$${META_SIP_USER_PASSWORD}
+      username=$${WA_BUSINESS_PHONE_NUMBER}
+      realm=*
+      EOF
+
+      cat > /etc/asterisk/rtp.conf <<EOF
+      [general]
+      stunaddr=stun.l.google.com:19302
+      rtpstart=$${RTP_START}
+      rtpend=$${RTP_END}
+      EOF
+
+      chown root:asterisk /etc/asterisk/extensions.conf /etc/asterisk/pjsip.conf /etc/asterisk/rtp.conf
+      chmod 640 /etc/asterisk/extensions.conf /etc/asterisk/pjsip.conf /etc/asterisk/rtp.conf
+
+  - path: /usr/local/bin/asterisk-health-check.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      systemctl is-active asterisk
+      asterisk -rx "core show version"
+      asterisk -rx "pjsip show transports"
+      asterisk -rx "pjsip show endpoints"
+
+runcmd:
+  - ufw --force reset
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+%{ if enable_http_challenge ~}
+  - ufw allow 80/tcp
+%{ endif ~}
+  - ufw allow ${sip_tls_port}/tcp
+  - ufw allow ${rtp_udp_start}:${rtp_udp_end}/udp
+  - ufw --force enable
+  - mkdir -p /var/lib/asterisk/sounds
+  - /usr/local/bin/setup-asterisk-certs.sh
+  - /usr/local/bin/render-asterisk-configs.sh
+  - systemctl enable asterisk
+  - systemctl restart asterisk
+  - /usr/local/bin/asterisk-health-check.sh > /var/log/asterisk-health.log 2>&1 || true
+
+final_message: "Asterisk bootstrap complete. Add incoming_welcome.wav and outgoing_welcome.wav to /var/lib/asterisk/sounds, then verify /var/log/asterisk-health.log"

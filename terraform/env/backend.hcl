@@ -1,0 +1,5 @@
+resource_group_name = "rg-vgiardino"
+storage_account_name = "vgiardino"
+location            = "East US"
+container_name      = "tfstate"
+key                 = "asterisk/dev.tfstate"
