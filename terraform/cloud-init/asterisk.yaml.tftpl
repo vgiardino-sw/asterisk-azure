@@ -1,14 +1,4 @@
 #cloud-config
-package_update: true
-package_upgrade: true
-
-packages:
-  - asterisk
-  - certbot
-  - ufw
-  - jq
-  - curl
-  - dnsutils
 
 write_files:
   - path: /etc/asterisk/meta-guide/meta-sip-values.conf
@@ -71,15 +61,16 @@ write_files:
 
       source /etc/asterisk/meta-guide/meta-sip-values.conf
 
-      EXTERNAL_IP="$(curl -s -H Metadata:true 'http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text' || true)"
-      if [[ -z "$${EXTERNAL_IP}" ]]; then
-        EXTERNAL_IP="0.0.0.0"
+      EXTERNAL_IP="${external_ip}"
+      if [[ -z "$${EXTERNAL_IP}" || "$${EXTERNAL_IP}" == "0.0.0.0" ]]; then
+        echo "[render-asterisk-configs] Invalid Terraform external_ip value: '$${EXTERNAL_IP}'" >&2
+        exit 1
       fi
 
       cat > /etc/asterisk/extensions.conf <<EOF
       [c2b-sub-dial]
       exten => s,1,NoOp()
-        same => n,Read(Digits,incoming_welcome,0,,5,500)
+        same => n,Set(Digits=1001)
         same => n,Dial(PJSIP/\$${Digits})
         same => n,Hangup()
 
@@ -90,7 +81,8 @@ write_files:
 
       ;Extension for B2C business call through Meta SIP gateway
       exten => b2c-sip,1,NoOp()
-        same => n,Read(Digits,outgoing_welcome,0,,5,500)
+        same => n,Read(Digits,,0,,5,500)
+        same => n,ExecIf(\$["\$${Digits}"=""]?Hangup())
         same => n,Dial(PJSIP/whatsapp/sip:+\$${Digits}@wa.meta.vc)
 
       ;Extension to handle incoming invite requests from Meta SIP gateway to <wa-business-phone-number>@<asterisk-sip-server-dns>
@@ -245,7 +237,42 @@ write_files:
       asterisk -rx "pjsip show transports"
       asterisk -rx "pjsip show endpoints"
 
+  - path: /usr/local/bin/bootstrap-asterisk.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+
+      retry() {
+        local n=0
+        local max=8
+        local delay=15
+        until "$@"; do
+          n=$((n + 1))
+          if [[ "$n" -ge "$max" ]]; then
+            echo "[bootstrap-asterisk] command failed after $n attempts: $*" >&2
+            return 1
+          fi
+          echo "[bootstrap-asterisk] retry $n/$max for: $*" >&2
+          sleep "$delay"
+        done
+      }
+
+      retry dpkg --configure -a
+      retry apt-get -f install -y
+      retry apt-get update
+      retry apt-get install -y asterisk certbot ufw jq curl dnsutils
+
+      mkdir -p /var/lib/asterisk/sounds
+      /usr/local/bin/setup-asterisk-certs.sh
+      /usr/local/bin/render-asterisk-configs.sh
+      systemctl enable asterisk
+      systemctl restart asterisk
+
 runcmd:
+  - cloud-init-per once asterisk-bootstrap /usr/local/bin/bootstrap-asterisk.sh
   - ufw --force reset
   - ufw default deny incoming
   - ufw default allow outgoing
@@ -256,11 +283,6 @@ runcmd:
   - ufw allow ${sip_tls_port}/tcp
   - ufw allow ${rtp_udp_start}:${rtp_udp_end}/udp
   - ufw --force enable
-  - mkdir -p /var/lib/asterisk/sounds
-  - /usr/local/bin/setup-asterisk-certs.sh
-  - /usr/local/bin/render-asterisk-configs.sh
-  - systemctl enable asterisk
-  - systemctl restart asterisk
   - /usr/local/bin/asterisk-health-check.sh > /var/log/asterisk-health.log 2>&1 || true
 
-final_message: "Asterisk bootstrap complete. Add incoming_welcome.wav and outgoing_welcome.wav to /var/lib/asterisk/sounds, then verify /var/log/asterisk-health.log"
+final_message: "Asterisk bootstrap complete. Verify /var/log/asterisk-health.log"

@@ -42,6 +42,7 @@ terraform -chdir=terraform apply -var-file="env/dev.tfvars"
   - `whatsapp` context extensions `10XX`
   - `b2c-sip` flow dialing `sip:+${Digits}@wa.meta.vc`
   - incoming route `_+<wa-business-phone-number>`
+  - no dependency on local `.wav` prompt files
 - `/etc/asterisk/pjsip.conf` with:
   - TLS transport on `5061`
   - cert paths `/var/lib/asterisk/certs/fullchain.cer` and `/var/lib/asterisk/certs/cer.key`
@@ -66,12 +67,6 @@ sudo asterisk -rx "pjsip show transports"
 sudo asterisk -rx "pjsip show endpoints"
 sudo cat /var/log/asterisk-health.log
 ```
-
-## Audio prompts required by the guide
-
-Place these files on the VM under `/var/lib/asterisk/sounds/`:
-- `incoming_welcome.wav`
-- `outgoing_welcome.wav`
 
 ## Test findings
 

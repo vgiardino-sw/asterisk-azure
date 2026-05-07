@@ -19,6 +19,7 @@ locals {
     sip_ua_password          = var.sip_ua_password
     meta_sip_user_password   = var.meta_sip_user_password
     domain_name              = var.domain_name
+    external_ip              = azurerm_public_ip.this.ip_address
     local_net                = var.subnet_cidr
     enable_http_challenge    = var.enable_http_challenge
   })
