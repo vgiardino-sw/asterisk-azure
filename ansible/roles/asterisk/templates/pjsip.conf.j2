@@ -1,0 +1,157 @@
+[transport-tls]
+type=transport
+protocol=tls
+bind=0.0.0.0:{{ sip_tls_port }}
+cert_file=/var/lib/asterisk/certs/fullchain.cer
+priv_key_file=/var/lib/asterisk/certs/cer.key
+method=sslv23
+allow_wildcard_certs=yes
+external_media_address={{ external_ip }}
+external_signaling_address={{ external_ip }}
+local_net={{ local_net }}
+
+[sdes_endpointtemplate](!)
+type=endpoint
+context=whatsapp
+disallow=all
+allow=OPUS
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=no
+media_use_received_transport=yes
+media_encryption=sdes
+
+[authtemplate](!)
+type=auth
+auth_type=userpass
+password={{ sip_ua_password }}
+
+[aortemplate](!)
+type=aor
+max_contacts=1
+remove_existing=yes
+
+[1000](sdes_endpointtemplate)
+auth=1000_auth
+aors=1000
+
+[1000_auth](authtemplate)
+username=1000
+
+[1000](aortemplate)
+
+[1001](sdes_endpointtemplate)
+auth=1001_auth
+aors=1001
+
+[1001_auth](authtemplate)
+username=1001
+
+[1001](aortemplate)
+
+[1002](sdes_endpointtemplate)
+auth=1002_auth
+aors=1002
+
+[1002_auth](authtemplate)
+username=1002
+
+[1002](aortemplate)
+
+[1003](sdes_endpointtemplate)
+auth=1003_auth
+aors=1003
+
+[1003_auth](authtemplate)
+username=1003
+
+[1003](aortemplate)
+
+[1004](sdes_endpointtemplate)
+auth=1004_auth
+aors=1004
+
+[1004_auth](authtemplate)
+username=1004
+
+[1004](aortemplate)
+
+[1005](sdes_endpointtemplate)
+auth=1005_auth
+aors=1005
+
+[1005_auth](authtemplate)
+username=1005
+
+[1005](aortemplate)
+
+;This endpoint maps to an IVR for C2B calls
+[c2b-sip](sdes_endpointtemplate)
+
+[c2b-sip](aortemplate)
+
+[c2b-sip]
+type=identify
+endpoint=c2b-sip
+match_header=X-FB-External-Domain: wa.meta.vc
+
+;special endpoint for Meta SIP Gateway integration
+;This endpoint maps to an IVR for B2C calls
+[b2c-sip](sdes_endpointtemplate)
+
+[b2c-sip](aortemplate)
+
+[whatsapp](sdes_endpointtemplate)
+type=endpoint
+transport=transport-tls
+disallow=all
+allow=opus,ulaw,alaw
+aors=whatsapp
+from_user=+{{ wa_business_phone_number }}
+from_domain={{ domain_name }}
+outbound_auth=whatsapp
+
+[whatsapp]
+type=aor
+contact=sip:wa.meta.vc
+
+[whatsapp]
+type=auth
+auth_type=userpass
+password={{ meta_sip_user_password }}
+username={{ wa_business_phone_number }}
+realm=*
+
+
+[livekit]
+type=endpoint
+transport=transport-tls
+context=from-livekit
+disallow=all
+allow=g722,ulaw,alaw,opus
+aors=livekit
+auth=livekit-auth
+outbound_auth=livekit-auth
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+media_use_received_transport=yes
+media_encryption=sdes
+from_domain=5n9irixhkiy.sip.livekit.cloud
+
+[livekit-auth]
+type=auth
+auth_type=userpass
+username=asterisk
+password=strongpassword
+
+[livekit]
+type=aor
+contact=sip:5n9irixhkiy.sip.livekit.cloud:5060;transport=tls
+
+[livekit]
+type=identify
+endpoint=livekit
+match_header=X-LiveKit-Trunk: asterisk-outbound

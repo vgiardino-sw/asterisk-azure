@@ -1,0 +1,60 @@
+---
+- name: Render extensions.conf
+  ansible.builtin.template:
+    src: extensions.conf.j2
+    dest: /etc/asterisk/extensions.conf
+    owner: root
+    group: asterisk
+    mode: '0640'
+  notify:
+    - reload dialplan
+    - core reload
+
+- name: Render pjsip.conf
+  ansible.builtin.template:
+    src: pjsip.conf.j2
+    dest: /etc/asterisk/pjsip.conf
+    owner: root
+    group: asterisk
+    mode: '0640'
+  notify:
+    - reload pjsip
+    - core reload
+
+- name: Render rtp.conf
+  ansible.builtin.template:
+    src: rtp.conf.j2
+    dest: /etc/asterisk/rtp.conf
+    owner: root
+    group: asterisk
+    mode: '0640'
+  notify: core reload
+
+- name: Ensure asterisk is enabled and started
+  ansible.builtin.service:
+    name: asterisk
+    enabled: true
+    state: started
+
+- name: Apply pending Asterisk reload handlers before health checks
+  ansible.builtin.meta: flush_handlers
+
+- name: Run asterisk health checks
+  ansible.builtin.shell: |
+    set -euo pipefail
+    systemctl is-active asterisk
+    asterisk -rx "core show version"
+    asterisk -rx "pjsip show transports"
+    asterisk -rx "pjsip show endpoints"
+  args:
+    executable: /bin/bash
+  register: asterisk_health
+  changed_when: false
+
+- name: Save health check output
+  ansible.builtin.copy:
+    dest: /var/log/asterisk-health.log
+    owner: root
+    group: root
+    mode: '0644'
+    content: "{{ asterisk_health.stdout }}\n"

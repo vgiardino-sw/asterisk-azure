@@ -1,0 +1,6 @@
+all:
+  hosts:
+    ${host_alias}:
+      ansible_host: ${host}
+      ansible_user: ${ssh_user}
+      ansible_port: ${ssh_port}

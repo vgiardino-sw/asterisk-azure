@@ -1,20 +1,20 @@
 # Terraform Asterisk on Azure (WhatsApp SIP guide aligned)
 
-This repo provisions an Azure VM and bootstraps Asterisk with config aligned to Meta's "Asterisk using SIP" integration example.
+This repo provisions an Azure VM with Terraform and configures Asterisk with Ansible, aligned to Meta's "Asterisk using SIP" integration example.
 
 ## Important
 
 Run Terraform from the `terraform` directory or use `-chdir=terraform`.
 
-## Usage
+## Setup and Run
 
-1. Create tfvars:
+### 1. Prepare Terraform vars
 
 ```powershell
 Copy-Item terraform/env/dev.tfvars.example terraform/env/dev.tfvars
 ```
 
-2. Edit `terraform/env/dev.tfvars` with real values:
+Edit `terraform/env/dev.tfvars` with real values:
 
 - `subscription_id`
 - `ssh_public_key`
@@ -25,7 +25,7 @@ Copy-Item terraform/env/dev.tfvars.example terraform/env/dev.tfvars
 - `sip_ua_password`
 - `meta_sip_user_password`
 
-3. Init/validate/plan/apply:
+### 2. Provision infrastructure with Terraform
 
 ```powershell
 terraform -chdir=terraform init
@@ -35,7 +35,104 @@ terraform -chdir=terraform plan -var-file="env/dev.tfvars"
 terraform -chdir=terraform apply -var-file="env/dev.tfvars"
 ```
 
-## What gets configured on the VM
+### 3. Generate Ansible inventory and runtime vars from Terraform outputs
+
+```powershell
+pwsh -File scripts/generate-ansible-inputs.ps1
+```
+
+### 4. Install Ansible on WSL (Ubuntu)
+
+Run these commands in WSL:
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv python3-pip
+cd /mnt/c/Users/ValentinoGiardino/Documents/southworks/repositories/asterisk-azure
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install "ansible-core>=2.16,<2.18"
+ansible --version
+```
+
+Install required Ansible collections:
+
+```bash
+ansible-galaxy collection install -r ansible/requirements.yml
+```
+
+### 5. Ensure SSH key permissions in WSL
+
+If your key is stored on `C:\Users\...`, copy it into WSL and fix permissions:
+
+```bash
+mkdir -p ~/.ssh
+cp /mnt/c/Users/ValentinoGiardino/.ssh/asterisk_azure_ed25519 ~/.ssh/
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/asterisk_azure_ed25519
+```
+
+Use the key in [`ansible/inventory/hosts.yml`](/C:/Users/ValentinoGiardino/Documents/southworks/repositories/asterisk-azure/ansible/inventory/hosts.yml):
+
+```yaml
+all:
+  hosts:
+    asterisk_vm:
+      ansible_host: 20.124.130.98
+      ansible_user: azureuser
+      ansible_port: 22
+      ansible_ssh_private_key_file: /home/valen17/.ssh/asterisk_azure_ed25519
+      ansible_connection: ssh
+      ansible_python_interpreter: /usr/bin/python3
+```
+
+Quick connectivity test:
+
+```bash
+ansible -i ansible/inventory/hosts.yml all -m ping
+```
+
+### 6. Run Ansible configuration
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml
+```
+
+Run a second time to verify idempotency (expect mostly `ok` and close to zero `changed`):
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml
+```
+
+### 7. Optional: run specific tagged roles
+
+`site.yml` defines role tags:
+- `common`
+- `certbot`
+- `asterisk`
+- `ufw`
+
+Examples:
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml --tags certbot
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml --tags asterisk,ufw
+```
+
+## Responsibility split
+
+- Terraform:
+  - Azure infra (networking, NSG, VM)
+  - minimal cloud-init bootstrap for Ansible prerequisites
+  - outputs required for Ansible handoff
+- Ansible:
+  - package installation (`asterisk`, `certbot`, `ufw`, utilities)
+  - certificate provisioning via Let's Encrypt
+  - rendering Asterisk configs
+  - firewall rules and Asterisk service/health checks
+
+## What gets configured on the VM by Ansible
 
 - `/etc/asterisk/extensions.conf` with:
   - `c2b-sub-dial` IVR flow
@@ -52,10 +149,11 @@ terraform -chdir=terraform apply -var-file="env/dev.tfvars"
   - WhatsApp endpoint/auth blocks (`auth_type=userpass`, `from_user=+<business_number>`)
 - `/etc/asterisk/rtp.conf` with STUN and RTP range `10000-20000`
 
-## Certificate behavior
+## Certificate behavior (Ansible)
 
-- If DNS + Let's Encrypt issuance succeeds, certs are copied into `/var/lib/asterisk/certs/`.
-- If issuance fails, a temporary self-signed cert is generated so Asterisk still starts.
+- `fqdn` and `letsencrypt_email` are required.
+- Let's Encrypt certs are issued/copied into `/var/lib/asterisk/certs/`.
+- If issuance fails, playbook execution fails (no self-signed fallback).
 
 ## Post-deploy checks
 
@@ -67,6 +165,26 @@ sudo asterisk -rx "pjsip show transports"
 sudo asterisk -rx "pjsip show endpoints"
 sudo cat /var/log/asterisk-health.log
 ```
+
+## Troubleshooting flow
+
+- Infra issues (`terraform plan/apply`, NSG, VM provisioning): debug Terraform first.
+- Runtime issues (Asterisk config, certs, service, UFW): debug Ansible playbook and host state.
+
+## Troubleshooting details
+
+- `UNPROTECTED PRIVATE KEY FILE`:
+  - Cause: key from `/mnt/c/...` has permissive permissions in WSL.
+  - Fix: copy key into `~/.ssh` and run `chmod 700 ~/.ssh` and `chmod 600 ~/.ssh/<key>`.
+- `community.general.ufw` plugin metadata errors:
+  - Cause: old system Ansible (for example `2.10.x`) mixed with newer collections.
+  - Fix: use project venv with modern `ansible-core` (`>=2.16,<2.18`) and reinstall collections.
+- `ModuleNotFoundError: ansible.module_utils.six.moves`:
+  - Cause: incompatible Ansible runtime and collection/module versions.
+  - Fix: use the WSL venv flow above instead of distro Ansible.
+- `scripts/generate-ansible-inputs.ps1` produced blank values:
+  - Fix: use current script version and run it from repo with an applied Terraform state.
+  - Validate with `terraform -chdir=terraform output -json`.
 
 ## Test findings
 

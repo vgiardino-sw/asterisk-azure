@@ -9,20 +9,7 @@ locals {
 
   fqdn = trimspace(var.hostname) != "" && trimspace(var.domain_name) != "" ? "${trimspace(var.hostname)}.${trimspace(var.domain_name)}" : ""
 
-  cloud_init = templatefile("${path.module}/cloud-init/asterisk.yaml.tftpl", {
-    sip_tls_port             = var.sip_tls_port
-    rtp_udp_start            = var.rtp_udp_start
-    rtp_udp_end              = var.rtp_udp_end
-    letsencrypt_email        = var.email_for_lets_encrypt
-    fqdn                     = local.fqdn
-    wa_business_phone_number = var.wa_business_phone_number
-    sip_ua_password          = var.sip_ua_password
-    meta_sip_user_password   = var.meta_sip_user_password
-    domain_name              = var.domain_name
-    external_ip              = azurerm_public_ip.this.ip_address
-    local_net                = var.subnet_cidr
-    enable_http_challenge    = var.enable_http_challenge
-  })
+  cloud_init = templatefile("${path.module}/cloud-init/asterisk.yaml.tftpl", {})
 }
 
 resource "azurerm_resource_group" "this" {

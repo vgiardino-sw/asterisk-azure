@@ -1,0 +1,55 @@
+---
+- name: Validate required runtime vars
+  ansible.builtin.assert:
+    that:
+      - sip_tls_port is defined
+      - rtp_udp_start is defined
+      - rtp_udp_end is defined
+      - wa_business_phone_number is defined
+      - sip_ua_password is defined
+      - meta_sip_user_password is defined
+      - external_ip is defined
+      - external_ip | trim != ''
+      - external_ip != '0.0.0.0'
+    fail_msg: Missing required vars. Provide vars via --extra-vars or vars file.
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - asterisk
+      - certbot
+      - ufw
+      - jq
+      - curl
+      - dnsutils
+      - openssl
+    state: present
+    update_cache: true
+
+- name: Ensure required directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - { path: /etc/asterisk/meta-guide, owner: root, group: root, mode: '0755' }
+    - { path: /var/lib/asterisk/certs, owner: asterisk, group: asterisk, mode: '0750' }
+    - { path: /var/lib/asterisk/sounds, owner: asterisk, group: asterisk, mode: '0755' }
+
+- name: Render runtime meta values file
+  ansible.builtin.copy:
+    dest: /etc/asterisk/meta-guide/meta-sip-values.conf
+    owner: root
+    group: root
+    mode: '0600'
+    content: |
+      WA_BUSINESS_PHONE_NUMBER="{{ wa_business_phone_number }}"
+      SIP_UA_PASSWORD="{{ sip_ua_password }}"
+      META_SIP_USER_PASSWORD="{{ meta_sip_user_password }}"
+      DOMAIN_NAME="{{ domain_name | default('') }}"
+      SIP_TLS_PORT="{{ sip_tls_port }}"
+      LOCAL_NET="{{ local_net }}"
+      RTP_START="{{ rtp_udp_start }}"
+      RTP_END="{{ rtp_udp_end }}"

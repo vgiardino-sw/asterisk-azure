@@ -1,0 +1,6 @@
+all:
+  hosts:
+    asterisk_vm:
+      ansible_host: 0.0.0.0
+      ansible_user: azureuser
+      ansible_port: 22

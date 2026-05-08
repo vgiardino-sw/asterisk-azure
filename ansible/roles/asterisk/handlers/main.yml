@@ -1,0 +1,9 @@
+---
+- name: reload pjsip
+  ansible.builtin.command: asterisk -rx "pjsip reload"
+
+- name: reload dialplan
+  ansible.builtin.command: asterisk -rx "dialplan reload"
+
+- name: core reload
+  ansible.builtin.command: asterisk -rx "core reload"

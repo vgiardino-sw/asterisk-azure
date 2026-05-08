@@ -1,0 +1,16 @@
+---
+- name: Configure Asterisk on Azure VM
+  hosts: all
+  become: true
+  roles:
+    - role: common
+      tags: common
+
+    - role: certbot
+      tags: certbot
+      
+    - role: asterisk
+      tags: asterisk
+
+    - role: ufw
+      tags: ufw

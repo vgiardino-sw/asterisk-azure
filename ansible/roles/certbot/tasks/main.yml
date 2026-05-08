@@ -1,0 +1,44 @@
+---
+- name: Validate Let's Encrypt inputs
+  ansible.builtin.assert:
+    that:
+      - fqdn is defined
+      - fqdn | trim != ''
+      - letsencrypt_email is defined
+      - letsencrypt_email | trim != ''
+    fail_msg: "fqdn and letsencrypt_email are required."
+
+- name: Check if Let's Encrypt cert already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ fqdn }}/fullchain.pem"
+  register: letsencrypt_cert
+
+- name: Request cert with certbot standalone
+  ansible.builtin.command: >-
+    certbot certonly --standalone --non-interactive --agree-tos
+    --email {{ letsencrypt_email }} -d {{ fqdn }}
+  when: not letsencrypt_cert.stat.exists
+  register: certbot_result
+  changed_when: certbot_result.rc == 0
+
+- name: Copy cert and key to asterisk cert dir
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: asterisk
+    group: asterisk
+    mode: '0640'
+    remote_src: true
+  loop:
+    - { src: "/etc/letsencrypt/live/{{ fqdn }}/privkey.pem", dest: /var/lib/asterisk/certs/cer.key }
+    - { src: "/etc/letsencrypt/live/{{ fqdn }}/fullchain.pem", dest: /var/lib/asterisk/certs/fullchain.cer }
+
+- name: Ensure cert ownership and permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: asterisk
+    group: asterisk
+    mode: '0640'
+  loop:
+    - /var/lib/asterisk/certs/cer.key
+    - /var/lib/asterisk/certs/fullchain.cer

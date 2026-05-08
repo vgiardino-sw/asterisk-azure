@@ -17,3 +17,35 @@ output "asterisk_service_status_hint" {
   description = "Command to verify Asterisk status once connected."
   value       = "sudo systemctl status asterisk --no-pager && sudo asterisk -rx 'core show version'"
 }
+
+output "ansible_target" {
+  description = "Single-host Ansible target metadata."
+  value = {
+    host        = azurerm_public_ip.this.ip_address
+    fqdn        = azurerm_public_ip.this.fqdn
+    ssh_user    = var.admin_username
+    ssh_port    = 22
+    host_alias  = "asterisk_vm"
+    local_net   = var.subnet_cidr
+    external_ip = azurerm_public_ip.this.ip_address
+  }
+}
+
+output "ansible_runtime_vars" {
+  description = "Runtime values required by Ansible. Includes sensitive values."
+  sensitive   = true
+  value = {
+    sip_tls_port             = var.sip_tls_port
+    rtp_udp_start            = var.rtp_udp_start
+    rtp_udp_end              = var.rtp_udp_end
+    enable_http_challenge    = var.enable_http_challenge
+    letsencrypt_email        = var.email_for_lets_encrypt
+    fqdn                     = trimspace(var.hostname) != "" && trimspace(var.domain_name) != "" ? "${trimspace(var.hostname)}.${trimspace(var.domain_name)}" : ""
+    domain_name              = var.domain_name
+    wa_business_phone_number = var.wa_business_phone_number
+    sip_ua_password          = var.sip_ua_password
+    meta_sip_user_password   = var.meta_sip_user_password
+    local_net                = var.subnet_cidr
+    external_ip              = azurerm_public_ip.this.ip_address
+  }
+}

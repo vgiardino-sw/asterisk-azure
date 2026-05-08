@@ -135,5 +135,5 @@ variable "subnet_cidr" {
 
 variable "public_ip_dns_label" {
   description = "public ip dns label."
-  type = string
+  type        = string
 }

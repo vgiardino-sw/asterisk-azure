@@ -1,0 +1,15 @@
+---
+# Copy to vars.yml and provide real values securely.
+# Do not commit vars.yml.
+sip_tls_port: 5061
+rtp_udp_start: 10000
+rtp_udp_end: 20000
+enable_http_challenge: false
+letsencrypt_email: ops@example.com
+fqdn: asterisk-sip.example.com
+domain_name: example.com
+wa_business_phone_number: "15551234567"
+sip_ua_password: CHANGE_ME_SIP_UA_PASSWORD
+meta_sip_user_password: CHANGE_ME_META_SIP_PASSWORD
+local_net: 10.42.1.0/24
+external_ip: 0.0.0.0
