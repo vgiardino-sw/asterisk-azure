@@ -81,12 +81,23 @@ write_files:
 
       ;Extension for B2C business call through Meta SIP gateway
       exten => b2c-sip,1,NoOp()
-        same => n,Read(Digits,,0,,5,500)
-        same => n,ExecIf(\$["\$${Digits}"=""]?Hangup())
-        same => n,Dial(PJSIP/whatsapp/sip:+\$${Digits}@wa.meta.vc)
+        same => n,Set(Digits=5493875761526)
+        same => n,Dial(PJSIP/whatsapp/sip:+\$${Digits}@wa.meta.vc,60)
+        same => n,Hangup()
 
       ;Extension to handle incoming invite requests from Meta SIP gateway to <wa-business-phone-number>@<asterisk-sip-server-dns>
       exten => _+$${WA_BUSINESS_PHONE_NUMBER},1,Goto(c2b-sub-dial,s,1)
+
+
+      exten => 7000,1,NoOp(Test call to LiveKit)
+      same => n,Dial(PJSIP/livekit/sip:\$${EXTEN}@5n9irixhkiy.sip.livekit.cloud,30)
+      same => n,Hangup()
+
+      [from-livekit]
+      exten => 7001,1,NoOp(Call from LiveKit to Asterisk)
+      same => n,Dial(PJSIP/1001,30)
+      same => n,Hangup()
+
       EOF
 
       cat > /etc/asterisk/pjsip.conf <<EOF
@@ -214,6 +225,39 @@ write_files:
       password=$${META_SIP_USER_PASSWORD}
       username=$${WA_BUSINESS_PHONE_NUMBER}
       realm=*
+
+
+      [livekit]
+      type=endpoint
+      transport=transport-tls
+      context=from-livekit
+      disallow=all
+      allow=g722,ulaw,alaw,opus
+      aors=livekit
+      auth=livekit-auth
+      outbound_auth=livekit-auth
+      direct_media=no
+      rtp_symmetric=yes
+      force_rport=yes
+      rewrite_contact=yes
+      media_use_received_transport=yes
+      media_encryption=sdes
+      from_domain=5n9irixhkiy.sip.livekit.cloud
+
+      [livekit-auth]
+      type=auth
+      auth_type=userpass
+      username=asterisk
+      password=strongpassword
+
+      [livekit]
+      type=aor
+      contact=sip:5n9irixhkiy.sip.livekit.cloud:5060;transport=tls
+
+      [livekit]
+      type=identify
+      endpoint=livekit
+      match_header=X-LiveKit-Trunk: asterisk-outbound
       EOF
 
       cat > /etc/asterisk/rtp.conf <<EOF

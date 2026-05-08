@@ -15,6 +15,7 @@ enable_http_challenge    = false
 rtp_udp_start            = 10000
 rtp_udp_end              = 20000
 hostname                 = "asterisk-sip"
+public_ip_dns_label      = "asterisk"
 domain_name              = "example.com"
 email_for_lets_encrypt   = "ops@example.com"
 wa_business_phone_number = "15551234567"

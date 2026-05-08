@@ -52,7 +52,7 @@ resource "azurerm_public_ip" "this" {
   resource_group_name = azurerm_resource_group.this.name
   allocation_method   = "Static"
   sku                 = "Standard"
-  domain_name_label   = trimspace(var.hostname) != "" ? lower(replace(var.hostname, "_", "-")) : null
+  domain_name_label   = trimspace(var.public_ip_dns_label) != "" ? lower(replace(var.public_ip_dns_label, "_", "-")) : null
   tags                = local.tags
 }
 
@@ -100,6 +100,34 @@ resource "azurerm_network_security_rule" "rtp_udp" {
   source_port_range           = "*"
   destination_port_ranges     = ["${var.rtp_udp_start}-${var.rtp_udp_end}"]
   source_address_prefixes     = var.meta_source_ips
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.this.name
+  network_security_group_name = azurerm_network_security_group.this.name
+}
+
+resource "azurerm_network_security_rule" "rtp_udp_livekit" {
+  name                        = "allow-rtp-udp-livekit"
+  priority                    = 115
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Udp"
+  source_port_range           = "*"
+  destination_port_ranges     = ["${var.rtp_udp_start}-${var.rtp_udp_end}"]
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.this.name
+  network_security_group_name = azurerm_network_security_group.this.name
+}
+
+resource "azurerm_network_security_rule" "sip_livekit_tls" {
+  name                        = "allow-sip-tls-livekit"
+  priority                    = 111
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_ranges     = ["5061"]
+  source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.this.name
   network_security_group_name = azurerm_network_security_group.this.name

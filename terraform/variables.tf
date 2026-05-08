@@ -132,3 +132,8 @@ variable "subnet_cidr" {
   type        = string
   default     = "10.42.1.0/24"
 }
+
+variable "public_ip_dns_label" {
+  description = "public ip dns label."
+  type = string
+}
