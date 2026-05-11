@@ -1,0 +1,13 @@
+[whatsapp]
+; Incoming C2B call from Meta SIP Gateway to your WhatsApp business number.
+; Send it to LiveKit extension 7000.
+exten => _+{{ wa_business_phone_number }},1,NoOp(C2B call from Meta to LiveKit)
+ same => n,Dial(PJSIP/7000@livekit,30)
+ same => n,Hangup()
+
+
+[from-livekit]
+; Call from LiveKit into Asterisk, then out through Meta.
+exten => 7001,1,NoOp(B2C call from LiveKit to Meta)
+ same => n,Dial(PJSIP/+5493875761526@whatsapp,60)
+ same => n,Hangup()
