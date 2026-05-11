@@ -1,0 +1,19 @@
+{
+  "sipDispatchRuleId": "SDR_9GhbFpBvRrPk",
+  "rule": {
+    "dispatchRuleIndividual": {
+      "roomPrefix": "call-"
+    }
+  },
+  "trunkIds": [
+    "ST_tMjZg59WV7Bm"
+  ],
+  "name": "asterisk-dispatch",
+  "roomConfig": {
+    "agents": [
+      {
+        "agentName": "telephony-agent"
+      }
+    ]
+  }
+}
