@@ -32,15 +32,6 @@ type=aor
 max_contacts=1
 remove_existing=yes
 
-[1000](sdes_endpointtemplate)
-auth=1000_auth
-aors=1000
-
-[1000_auth](authtemplate)
-username=1000
-
-[1000](aortemplate)
-
 [1001](sdes_endpointtemplate)
 auth=1001_auth
 aors=1001
@@ -49,42 +40,6 @@ aors=1001
 username=1001
 
 [1001](aortemplate)
-
-[1002](sdes_endpointtemplate)
-auth=1002_auth
-aors=1002
-
-[1002_auth](authtemplate)
-username=1002
-
-[1002](aortemplate)
-
-[1003](sdes_endpointtemplate)
-auth=1003_auth
-aors=1003
-
-[1003_auth](authtemplate)
-username=1003
-
-[1003](aortemplate)
-
-[1004](sdes_endpointtemplate)
-auth=1004_auth
-aors=1004
-
-[1004_auth](authtemplate)
-username=1004
-
-[1004](aortemplate)
-
-[1005](sdes_endpointtemplate)
-auth=1005_auth
-aors=1005
-
-[1005_auth](authtemplate)
-username=1005
-
-[1005](aortemplate)
 
 ;This endpoint maps to an IVR for C2B calls
 [c2b-sip](sdes_endpointtemplate)
@@ -149,7 +104,7 @@ password=strongpassword
 
 [livekit]
 type=aor
-contact=sip:5n9irixhkiy.sip.livekit.cloud:5060;transport=tls
+contact=sip:5n9irixhkiy.sip.livekit.cloud
 
 [livekit]
 type=identify
