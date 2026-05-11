@@ -5,6 +5,7 @@ sudo asterisk -vvvvvr
 
 pjsip set logger on
 core set verbose 5
+core set debug 5
 
 rtp set debug on
 

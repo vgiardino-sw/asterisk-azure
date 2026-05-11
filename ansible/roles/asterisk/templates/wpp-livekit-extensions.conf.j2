@@ -8,6 +8,6 @@ exten => _+{{ wa_business_phone_number }},1,NoOp(C2B call from Meta to LiveKit)
 
 [from-livekit]
 ; Call from LiveKit into Asterisk, then out through Meta.
-exten => 7001,1,NoOp(B2C call from LiveKit to Meta)
- same => n,Dial(PJSIP/+5493875761526@whatsapp,60)
+exten => _+X.,1,NoOp(B2C call from LiveKit to Meta/WhatsApp - dialed ${EXTEN})
+ same => n,Dial(PJSIP/${EXTEN}@whatsapp,60)
  same => n,Hangup()

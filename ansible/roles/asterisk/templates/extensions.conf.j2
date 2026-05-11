@@ -12,14 +12,14 @@ exten => _10XX,1,NoOp()
 ;Extension for B2C business call through Meta SIP gateway
 exten => b2c-sip,1,NoOp()
   same => n,Set(Digits=5493875761526)
-  same => n,Dial(PJSIP/whatsapp/sip:+${Digits}@wa.meta.vc,60)
+  same => n,Dial(PJSIP/${Digits}@whatsapp,60)
   same => n,Hangup()
 
 ;Extension to handle incoming invite requests from Meta SIP gateway to <wa-business-phone-number>@<asterisk-sip-server-dns>
 exten => _+{{ wa_business_phone_number }},1,Goto(c2b-sub-dial,s,1)
 
 exten => 7000,1,NoOp(Test call to LiveKit)
-same => n,Dial(PJSIP/livekit/sip:${EXTEN}@5n9irixhkiy.sip.livekit.cloud,30)
+same => n,Dial(PJSIP/${EXTEN}@livekit,30)
 same => n,Hangup()
 
 [from-livekit]
