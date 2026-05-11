@@ -6,9 +6,7 @@
     owner: root
     group: asterisk
     mode: '0640'
-  notify:
-    - reload dialplan
-    - core reload
+  notify: restart asterisk
 
 - name: Render pjsip.conf
   ansible.builtin.template:
@@ -17,9 +15,7 @@
     owner: root
     group: asterisk
     mode: '0640'
-  notify:
-    - reload pjsip
-    - core reload
+  notify: restart asterisk
 
 - name: Render rtp.conf
   ansible.builtin.template:
@@ -28,7 +24,7 @@
     owner: root
     group: asterisk
     mode: '0640'
-  notify: core reload
+  notify: restart asterisk
 
 - name: Ensure asterisk is enabled and started
   ansible.builtin.service:
