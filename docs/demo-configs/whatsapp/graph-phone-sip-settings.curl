@@ -1,0 +1,21 @@
+curl --location 'https://graph.facebook.com/v25.0/175836568944329/settings' \
+--header 'Authorization: Bearer EAAVp9xGzggIBRQ19IFb0VQlxxD4vYpZAwRQNCeHEbZBZCmwZCi26dyCgIigLvC9fZClZAvZBTHDj2syXKMZBNQgp8q2VI41iJcsbyZAXwKD1ZCSnICAYNlE4z4h9fQhrYCm4MsgB2CUW5rZCA9qcfu3i8T9VmQqnaSCcz95BYMQ3Der73yom7hjQaYH0agOR6Gy1IC4zqKphmH3iIrCtSb0TL6kwkVfZBMHcwL3ZClasOvxZAt1OGFNNkZBacVBjVuZAkYcOhThOp5VraLhiscf4gHqNuVRLTXMTEE0D71N71gZDZD' \
+--header 'Content-Type: application/json' \
+--data '{
+  "calling": {
+    "status": "ENABLED",
+    "call_icon_visibility": "DEFAULT",
+    "callback_permission_status": "DISABLED",
+    "sip": {
+      "status": "ENABLED",
+      "servers": [
+        {
+          "hostname": "asterisk.vgiardino.com",
+          "port": 5061
+        }
+      ]
+    },
+    "srtp_key_exchange_protocol": "SDES"
+  }
+}
+'
