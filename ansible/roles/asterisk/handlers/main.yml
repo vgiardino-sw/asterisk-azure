@@ -1,9 +1,4 @@
 ---
-- name: restart asterisk
-  ansible.builtin.service:
-    name: asterisk
-    state: restarted
-
 - name: reload pjsip
   ansible.builtin.command: asterisk -rx "pjsip reload"
 

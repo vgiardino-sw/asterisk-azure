@@ -105,10 +105,6 @@ Run a second time to verify idempotency (expect mostly `ok` and close to zero `c
 ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml
 ```
 
-Runtime behavior:
-- When `extensions.conf`, `pjsip.conf`, or `rtp.conf` changes, Ansible triggers a full `asterisk` restart via handler.
-- This is intentional to avoid stale PJSIP/TLS runtime state after config updates.
-
 ### 7. Optional: run specific tagged roles
 
 `site.yml` defines role tags:

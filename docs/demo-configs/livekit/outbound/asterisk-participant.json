@@ -1,7 +1,0 @@
-{
-  "sip_trunk_id": "ST_T6WPTyt4NraZ",
-  "sip_call_to": "7001",
-  "room_name": "test-room",
-  "participant_identity": "asterisk-7001",
-  "sip_number": "+10000000000"
-}
