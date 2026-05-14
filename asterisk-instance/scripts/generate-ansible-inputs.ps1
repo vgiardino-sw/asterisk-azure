@@ -63,6 +63,9 @@ all:
       ansible_host: $($target.host)
       ansible_user: $($target.ssh_user)
       ansible_port: $($target.ssh_port)
+      ansible_connection: ssh
+      ansible_python_interpreter: /usr/bin/python3
+      ansible_ssh_private_key_file: <replace_with_path_to_your_private_key>
 "@
 
 $vars = @"

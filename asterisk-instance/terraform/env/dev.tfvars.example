@@ -4,7 +4,10 @@ resource_group_name      = "rg-asterisk-dev"
 location                 = "East US"
 vm_size                  = "Standard_B2s"
 admin_username           = "azureuser"
-ssh_public_key           = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFILL_ME your@email"
+ssh_public_keys = [
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFILL_ME your@email",
+  # Add more teammate keys here
+]
 allowed_source_ips       = ["203.0.113.10/32"]
 meta_source_ips          = [
   # Replace with current Meta/Cloud API Webhooks CIDRs for AS32934.

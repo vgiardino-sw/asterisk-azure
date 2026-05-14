@@ -1,0 +1,13 @@
+---
+sip_tls_port: 5061
+rtp_udp_start: 10000
+rtp_udp_end: 20000
+enable_http_challenge: true
+letsencrypt_email: "valentino.giardino@southworks.com"
+fqdn: "asterisk.vgiardino.com"
+domain_name: "vgiardino.com"
+wa_business_phone_number: "5493875168717"
+sip_ua_password: "N7v!2qL9#sP4xK8m"
+meta_sip_user_password: "04UOxePjHAHP6exOYlcyeoqeCiW6YTPb"
+local_net: "10.42.1.0/24"
+external_ip: "20.124.1.120"

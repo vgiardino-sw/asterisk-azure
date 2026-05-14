@@ -32,10 +32,15 @@ variable "admin_username" {
   default     = "azureuser"
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key content for VM access."
-  type        = string
+variable "ssh_public_keys" {
+  description = "List of SSH public key contents for VM access. All keys share the admin_username."
+  type        = list(string)
   sensitive   = true
+
+  validation {
+    condition     = length(var.ssh_public_keys) > 0
+    error_message = "ssh_public_keys must include at least one key."
+  }
 }
 
 variable "allowed_source_ips" {
@@ -136,4 +141,10 @@ variable "subnet_cidr" {
 variable "public_ip_dns_label" {
   description = "public ip dns label."
   type        = string
+}
+
+variable "livekit_api_source_ips" {
+  description = "List of Livekit API source CIDRs allowed to reach SIP TLS and RTP ports."
+  type        = list(string)
+  default     = []
 }

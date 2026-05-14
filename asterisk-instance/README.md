@@ -4,7 +4,7 @@ This repo provisions an Azure VM with Terraform and configures Asterisk with Ans
 
 ## Important
 
-Run Terraform from the `terraform` directory or use `-chdir=terraform`.
+Run Terraform from the `terraform` directory.
 
 ## Setup and Run
 
@@ -25,15 +25,35 @@ Edit `terraform/env/dev.tfvars` with real values:
 - `sip_ua_password`
 - `meta_sip_user_password`
 
+To generate and ssh key run this command:
+
+ssh-keygen -t ed25519 -C "your@email.com" -f "$HOME\.ssh\asterisk_vm_ed25519" -N ""
+
+copy the ssh key:
+
+Get-Content "$HOME\.ssh\asterisk_vm_ed25519.pub" | Set-Clipboard
+
+
+---
+For allowing Meta IPs, you can find the list of ips they use:
+
+https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/overview#ip-addresses
+
+This repo provide an script to collapse them 
+scripts\collapse_meta_cidrs.py
+
 ### 2. Provision infrastructure with Terraform
 
 ```powershell
-terraform -chdir=terraform init
-terraform -chdir=terraform fmt -check
-terraform -chdir=terraform validate
-terraform -chdir=terraform plan -var-file="env/dev.tfvars"
-terraform -chdir=terraform apply -var-file="env/dev.tfvars"
+terraform init
+terraform fmt -check
+terraform validate
+terraform plan -var-file="env/dev.tfvars"
+terraform apply -var-file="env/dev.tfvars"
 ```
+
+### 3. Set the DNS record on your DNS management platform
+Create an A record with the value of the specified hostname pointing to the provisioned external ip
 
 ### 3. Generate Ansible inventory and runtime vars from Terraform outputs
 
@@ -48,7 +68,6 @@ Run these commands in WSL:
 ```bash
 sudo apt update
 sudo apt install -y python3-venv python3-pip
-cd /mnt/c/Users/ValentinoGiardino/Documents/southworks/repositories/asterisk-azure
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install --upgrade pip
@@ -68,9 +87,9 @@ If your key is stored on `C:\Users\...`, copy it into WSL and fix permissions:
 
 ```bash
 mkdir -p ~/.ssh
-cp /mnt/c/Users/ValentinoGiardino/.ssh/asterisk_azure_ed25519 ~/.ssh/
+cp /mnt/c/Users/<your-user>/.ssh/asterisk_vm_ed25519 ~/.ssh/
 chmod 700 ~/.ssh
-chmod 600 ~/.ssh/asterisk_azure_ed25519
+chmod 600 ~/.ssh/asterisk_vm_ed25519
 ```
 
 Use the key in [`ansible/inventory/hosts.yml`](/C:/Users/ValentinoGiardino/Documents/southworks/repositories/asterisk-azure/ansible/inventory/hosts.yml):
@@ -82,7 +101,7 @@ all:
       ansible_host: 20.124.130.98
       ansible_user: azureuser
       ansible_port: 22
-      ansible_ssh_private_key_file: /home/valen17/.ssh/asterisk_azure_ed25519
+      ansible_ssh_private_key_file: /home/<your-user>/.ssh/asterisk_vm_ed25519
       ansible_connection: ssh
       ansible_python_interpreter: /usr/bin/python3
 ```
@@ -157,7 +176,7 @@ ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/gro
 
 - `fqdn` and `letsencrypt_email` are required.
 - Let's Encrypt certs are issued/copied into `/var/lib/asterisk/certs/`.
-- If issuance fails, playbook execution fails (no self-signed fallback).
+- If issuance fails, playbook execution fails.
 
 ## Post-deploy checks
 
@@ -186,10 +205,4 @@ sudo cat /var/log/asterisk-health.log
 - `ModuleNotFoundError: ansible.module_utils.six.moves`:
   - Cause: incompatible Ansible runtime and collection/module versions.
   - Fix: use the WSL venv flow above instead of distro Ansible.
-- `scripts/generate-ansible-inputs.ps1` produced blank values:
-  - Fix: use current script version and run it from repo with an applied Terraform state.
-  - Validate with `terraform -chdir=terraform output -json`.
 
-## Test findings
-
-See `docs/test-findings.md` for a full troubleshooting and validation log.
