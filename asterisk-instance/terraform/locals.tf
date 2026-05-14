@@ -3,7 +3,7 @@ locals {
     project     = "asterisk-azure"
     environment = var.environment
     managed_by  = "terraform"
-    owner       = "vgiardino"
+    owner       = "tech-titans"
     costCenter  = "demo"
   }
 

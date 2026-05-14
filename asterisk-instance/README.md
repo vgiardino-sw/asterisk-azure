@@ -1,10 +1,24 @@
-# Terraform Asterisk on Azure (WhatsApp SIP guide aligned)
+# Asterisk on Azure — WhatsApp + LiveKit SIP PoC
 
-This repo provisions an Azure VM with Terraform and configures Asterisk with Ansible, aligned to Meta's "Asterisk using SIP" integration example.
+This folder provisions an Azure VM running Asterisk via **Terraform** and configures it with **Ansible**. It supports two PoC scenarios: a "direct" mode where a softphone interacts independently with WhatsApp and LiveKit, and a "bridge" mode where Asterisk bridges WhatsApp ↔ LiveKit without a softphone.
 
-## Important
+## PoC Scenarios
 
-Run Terraform from the `terraform` directory.
+| Scenario | Description | Softphone needed? |
+|----------|-------------|:-:|
+| `direct` | Asterisk ↔ WhatsApp + Asterisk ↔ LiveKit (independent paths) | Yes (`1001`) |
+| `bridge` | Asterisk bridges WhatsApp ↔ LiveKit | No |
+
+See [docs/poc-scenarios.md](docs/poc-scenarios.md) for call flow diagrams, prerequisites, and testing instructions.
+
+## Prerequisites
+
+- **Terraform** ≥ 1.6.0
+- A **DNS zone** where you can add an A record
+- A **WhatsApp Business Account** with SIP calling enabled. See: [Configure SIP settings on business phone number](https://developers.facebook.com/documentation/business-messaging/whatsapp/calling/sip#configure-or-update-sip-settings-on-business-phone-number).
+- A **LiveKit** instance (cloud or self-hosted) with CLI (`lk`) installed
+
+---
 
 ## Setup and Run
 
@@ -16,32 +30,39 @@ Copy-Item terraform/env/dev.tfvars.example terraform/env/dev.tfvars
 
 Edit `terraform/env/dev.tfvars` with real values:
 
-- `subscription_id`
-- `ssh_public_key`
-- `allowed_source_ips`
-- `meta_source_ips`
-- `domain_name`
-- `wa_business_phone_number` (E.164 digits, no plus)
-- `sip_ua_password`
-- `meta_sip_user_password`
-- `livekit_auth_password`
-- `wa_consumer_phone_number` (E.164 digits, no plus — destination for B2C test calls)
+| Variable | Description |
+|----------|-------------|
+| `subscription_id` | Azure subscription ID |
+| `resource_group_name` | Resource group name (e.g. `rg-asterisk-dev`) |
+| `ssh_public_keys` | List of SSH public key contents for VM access |
+| `allowed_source_ips` | CIDRs allowed for SSH and SIP/RTP (your IP) |
+| `meta_source_ips` | Meta/WhatsApp CIDRs for SIP/RTP |
+| `livekit_api_source_ips` | LiveKit server CIDRs (leave empty for LiveKit Cloud — opens to all) |
+| `domain_name` | Base DNS zone (e.g. `example.com`) |
+| `hostname` | Host label (combined as `<hostname>.<domain_name>` for FQDN) |
+| `email_for_lets_encrypt` | Email for Let's Encrypt certificate registration |
+| `wa_business_phone_number` | WABA phone number, E.164 digits without `+` |
+| `sip_ua_password` | Password for softphone endpoint `1001` (PoC "direct" only) |
+| `meta_sip_user_password` | Meta SIP password from WABA calling config |
+| `livekit_auth_password` | Shared password for Asterisk ↔ LiveKit trunk auth |
+| `wa_consumer_phone_number` | Destination phone for B2C test calls, E.164 without `+` |
+| `livekit_domain` | LiveKit SIP server FQDN |
+| `poc_scenario` | `"direct"` or `"bridge"` |
+| `enable_http_challenge` | `true` to open port 80 for Let's Encrypt HTTP-01 |
 
 > **`meta_sip_user_password`** — The SIP password provided by Meta when you enable SIP calling on your WABA phone number.
-> See: [Configure SIP settings on business phone number](https://developers.facebook.com/documentation/business-messaging/whatsapp/calling/sip#configure-or-update-sip-settings-on-business-phone-number).
 > You can retrieve it with:
 > ```bash
 > curl --location 'https://graph.facebook.com/v25.0/{YOUR-WABA-PHONE-NUMBER-ID}/settings?include_sip_credentials=true' \
 >   --header 'Authorization: Bearer <TOKEN>' \
 >   --header 'Content-Type: application/json'
 > ```
-> Reference: [Include SIP user password in response](https://developers.facebook.com/documentation/business-messaging/whatsapp/calling/call-settings#include-sip-user-password-in-response)
 
-> **`livekit_auth_password`** — A password you choose. Used for mutual authentication between Asterisk and the LiveKit SIP trunk (both inbound and outbound trunks share the same credentials in this demo). Must match the `authPassword` configured in your LiveKit trunk resources.
+> **`livekit_auth_password`** — A password you choose. Used for mutual authentication between Asterisk and the LiveKit SIP trunk (both inbound and outbound trunks share the same credentials). Must match the `authPassword` in your LiveKit trunk resources.
 
 > **`sip_ua_password`** — A password you choose. Used by the SIP UA softphone (e.g. Linphone) to register as endpoint `1001` on Asterisk. Only needed for PoC "direct".
 
-> **`ssh_public_key`** — To generate an SSH key pair and copy the public key:
+> **`ssh_public_keys`** — To generate an SSH key pair and copy the public key:
 > ```powershell
 > ssh-keygen -t ed25519 -C "your@email.com" -f "$HOME\.ssh\asterisk_vm_ed25519" -N ""
 > Get-Content "$HOME\.ssh\asterisk_vm_ed25519.pub" | Set-Clipboard
@@ -58,9 +79,15 @@ This repo provides a script to collapse them into CIDR ranges:
 python scripts/collapse_meta_cidrs.py
 ```
 
+#### LiveKit source IPs
+
+- **LiveKit Cloud**: leave `livekit_api_source_ips = []` — the NSG will allow SIP/RTP from any source for the LiveKit rules (LiveKit Cloud uses dynamic IPs).
+- **Self-hosted LiveKit**: populate `livekit_api_source_ips` with your server CIDRs for tighter rules.
+
 ### 2. Provision infrastructure with Terraform
 
 ```powershell
+cd terraform
 terraform init
 terraform fmt -check
 terraform validate
@@ -70,7 +97,7 @@ terraform apply -var-file="env/dev.tfvars"
 
 ### 3. Set the DNS record
 
-Create an A record on your DNS provider with the specified hostname pointing to the provisioned external IP.
+Create an A record on your DNS provider: `<hostname>.<domain_name>` → the provisioned public IP (shown in `terraform output vm_public_ip`).
 
 ### 4. Generate Ansible inputs from Terraform outputs
 
@@ -78,9 +105,11 @@ Create an A record on your DNS provider with the specified hostname pointing to 
 pwsh -File scripts/generate-ansible-inputs.ps1
 ```
 
-### 5. Install Ansible on WSL (Ubuntu)
+This generates:
+- `ansible/inventory/hosts.yml` — Ansible inventory with VM connection details
+- `ansible/group_vars/vars.generated.yml` — Runtime variables from Terraform state
 
-Run these commands in WSL:
+### 5. Install Ansible on WSL (Ubuntu)
 
 ```bash
 sudo apt update
@@ -109,7 +138,7 @@ chmod 700 ~/.ssh
 chmod 600 ~/.ssh/asterisk_vm_ed25519
 ```
 
-Use the key in `ansible/inventory/hosts.yml`:
+Update `ansible/inventory/hosts.yml` with the correct key path:
 
 ```yaml
 all:
@@ -129,23 +158,18 @@ Quick connectivity test:
 ansible -i ansible/inventory/hosts.yml all -m ping
 ```
 
-### 7. Select the PoC scenario
+### 7. Verify generated variables
 
-This instance supports two PoC flows. See [docs/poc-scenarios.md](docs/poc-scenarios.md) for detailed call flow diagrams, prerequisites, and testing instructions.
-
-| Scenario | Description |
-|----------|-------------|
-| `direct` | Asterisk ↔ WhatsApp + Asterisk ↔ LiveKit (independent paths) |
-| `bridge` | Asterisk bridges WhatsApp ↔ LiveKit |
-
-The generate script (step 4) populates most values from Terraform outputs. Open `ansible/group_vars/vars.generated.yml` and verify that **all** variables have a value — in particular:
+Open `ansible/group_vars/vars.generated.yml` and confirm all values are populated:
 
 ```yaml
-poc_scenario: "direct"        # or "bridge"
-livekit_domain: "sip.example.com"
-livekit_auth_password: "your-password"
-wa_consumer_phone_number: "5491155551234"   # only needed for PoC "direct"
+poc_scenario: "direct"                    # or "bridge"
+livekit_domain: "azure-livekit.example.com"
+livekit_auth_password: "your-real-password"  # must match LiveKit trunk authPassword
+wa_consumer_phone_number: "5491155551234"    # only needed for PoC "direct"
 ```
+
+> **Important:** `livekit_auth_password` must match the `authPassword` configured on your LiveKit inbound and outbound trunks. If Terraform defaults it to `"strongpassword"`, update `dev.tfvars` and re-run steps 2 and 4.
 
 ### 8. Run Ansible configuration
 
@@ -167,19 +191,41 @@ Runtime behavior:
 
 `site.yml` defines role tags: `common`, `certbot`, `asterisk`, `ufw`.
 
-Examples:
-
 ```bash
 ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml --tags certbot
 ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml --tags asterisk,ufw
+```
+
+---
+
+## Switching Between PoCs
+
+1. Change `poc_scenario` in `terraform/env/dev.tfvars` and re-run Terraform + generate script, **or** edit `ansible/group_vars/vars.generated.yml` directly.
+2. Re-run the playbook (at minimum the `asterisk` tag):
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml --tags asterisk
+```
+
+Or override inline:
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -e @ansible/group_vars/vars.generated.yml -e poc_scenario=bridge
+```
+
+3. Verify:
+
+```bash
+sudo asterisk -rx "pjsip show endpoints"
+sudo asterisk -rx "dialplan show"
 ```
 
 ## Responsibility Split
 
 | Layer     | Responsibilities |
 |-----------|------------------|
-| Terraform | Azure infra (networking, NSG, VM), minimal cloud-init bootstrap, outputs for Ansible handoff |
-| Ansible   | Package installation (`asterisk`, `certbot`, `ufw`, utilities), Let's Encrypt certificates, Asterisk config rendering, firewall rules, service/health checks |
+| Terraform | Azure infra (RG, VNet, NSG, public IP, VM with Ubuntu 24.04), cloud-init bootstrap, Terraform outputs for Ansible handoff |
+| Ansible   | Package installation (`asterisk`, `certbot`, `ufw`, utilities), Let's Encrypt certificates, Asterisk config rendering (PJSIP + dialplan + RTP), firewall rules, service management and health checks |
 
 ## What Gets Configured on the VM
 
@@ -195,14 +241,14 @@ The Ansible `asterisk` role renders three configuration files based on the activ
 
 **PJSIP** (`pjsip-direct.conf.j2`):
 - SDES endpoint template + auth/aor templates
-- SIP UA endpoint `1001` for softphone registration
+- SIP UA endpoint `1001` for softphone registration (password: `sip_ua_password`)
 - `c2b-sip` identify (inbound Meta, matched by `X-FB-External-Domain: wa.meta.vc`)
 - `b2c-sip` endpoint (outbound Meta)
 - `whatsapp` trunk (endpoint + auth + aor targeting `wa.meta.vc`)
 - `livekit` trunk (endpoint + auth + aor + identify via `X-LiveKit-Trunk`)
 
 **Dialplan** (`extensions-direct.conf.j2`):
-- `[whatsapp]` context: `b2c-sip` extension (dials `wa_consumer_phone_number` via Meta), `_10XX` range, `7000` → LiveKit, `+<wa_business_phone_number>` → C2B sub-dial
+- `[whatsapp]` context: `b2c-sip` → dials `wa_consumer_phone_number` via Meta, `_10XX` range, `7000` → LiveKit, `+<wa_business_phone_number>` → C2B sub-dial
 - `[c2b-sub-dial]` context: routes inbound Meta calls to softphone `1001`
 - `[from-livekit]` context: `7001` → softphone `1001`
 
@@ -222,7 +268,8 @@ The Ansible `asterisk` role renders three configuration files based on the activ
 ## Certificate Behavior (Ansible)
 
 - `fqdn` and `letsencrypt_email` are required.
-- Let's Encrypt certs are issued and copied into `/var/lib/asterisk/certs/`.
+- Certbot uses **standalone** mode (requires port 80 open — set `enable_http_challenge = true`).
+- Certs are copied into `/var/lib/asterisk/certs/` (`fullchain.cer` + `cer.key`).
 - If issuance fails, the playbook fails.
 
 ## Post-deploy Checks
@@ -246,16 +293,19 @@ sudo cat /var/log/asterisk-health.log
 | `UNPROTECTED PRIVATE KEY FILE` | Key from `/mnt/c/...` has permissive permissions in WSL | Copy key into `~/.ssh` and run `chmod 700 ~/.ssh && chmod 600 ~/.ssh/<key>` |
 | `community.general.ufw` plugin metadata errors | Old system Ansible (e.g. `2.10.x`) mixed with newer collections | Use project venv with `ansible-core>=2.16,<2.18` and reinstall collections |
 | `ModuleNotFoundError: ansible.module_utils.six.moves` | Incompatible Ansible runtime and collection versions | Use the WSL venv flow (step 5) instead of distro Ansible |
+| Softphone can't register | Wrong credentials or transport settings | Username: `1001`, Password: `sip_ua_password`, TLS on port 5061, SRTP (SDES) mandatory |
+| LiveKit calls fail with 401/403 | `livekit_auth_password` mismatch | Ensure Ansible var matches `authPassword` in LiveKit trunk JSON configs |
+| Cert issuance fails | Port 80 not open or DNS not pointing to VM | Set `enable_http_challenge = true` in tfvars and verify DNS A record |
 
 ### Debugging
 
-To inspect Asterisk logs in real time, SSH into the VM and connect to the Asterisk CLI:
+SSH into the VM and connect to the Asterisk CLI:
 
 ```bash
 sudo asterisk -vvvvvr
 ```
 
-Then enable the relevant loggers from the Asterisk console:
+Enable relevant loggers from the Asterisk console:
 
 ```
 pjsip set logger on       ; SIP signaling (INVITE, 200 OK, BYE, etc.)
