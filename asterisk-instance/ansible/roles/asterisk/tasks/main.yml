@@ -1,8 +1,7 @@
 ---
 - name: Render extensions.conf
   ansible.builtin.template:
-    #src: extensions.conf.j2
-    src: wpp-livekit-extensions.conf.j2
+    src: "{{ 'extensions-direct.conf.j2' if poc_scenario == 'direct' else 'extensions-bridge.conf.j2' }}"
     dest: /etc/asterisk/extensions.conf
     owner: root
     group: asterisk
@@ -11,7 +10,7 @@
 
 - name: Render pjsip.conf
   ansible.builtin.template:
-    src: pjsip.conf.j2
+    src: "{{ 'pjsip-direct.conf.j2' if poc_scenario == 'direct' else 'pjsip-bridge.conf.j2' }}"
     dest: /etc/asterisk/pjsip.conf
     owner: root
     group: asterisk

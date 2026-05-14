@@ -11,7 +11,7 @@ exten => _10XX,1,NoOp()
 
 ;Extension for B2C business call through Meta SIP gateway
 exten => b2c-sip,1,NoOp()
-  same => n,Set(Digits=5493875761526)
+  same => n,Set(Digits={{ wa_consumer_phone_number }})
   same => n,Dial(PJSIP/${Digits}@whatsapp,60)
   same => n,Hangup()
 

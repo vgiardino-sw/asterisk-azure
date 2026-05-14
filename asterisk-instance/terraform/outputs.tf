@@ -43,9 +43,13 @@ output "ansible_runtime_vars" {
     fqdn                     = trimspace(var.hostname) != "" && trimspace(var.domain_name) != "" ? "${trimspace(var.hostname)}.${trimspace(var.domain_name)}" : ""
     domain_name              = var.domain_name
     wa_business_phone_number = var.wa_business_phone_number
-    sip_ua_password          = var.sip_ua_password
-    meta_sip_user_password   = var.meta_sip_user_password
-    local_net                = var.subnet_cidr
-    external_ip              = azurerm_public_ip.this.ip_address
+    sip_ua_password           = var.sip_ua_password
+    meta_sip_user_password    = var.meta_sip_user_password
+    wa_consumer_phone_number  = var.wa_consumer_phone_number
+    livekit_auth_password     = var.livekit_auth_password
+    livekit_domain            = var.livekit_domain
+    poc_scenario              = var.poc_scenario
+    local_net                 = var.subnet_cidr
+    external_ip               = azurerm_public_ip.this.ip_address
   }
 }

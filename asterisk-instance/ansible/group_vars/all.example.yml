@@ -13,3 +13,12 @@ sip_ua_password: CHANGE_ME_SIP_UA_PASSWORD
 meta_sip_user_password: CHANGE_ME_META_SIP_PASSWORD
 local_net: 10.42.1.0/24
 external_ip: 0.0.0.0
+
+# PoC scenario to deploy: "direct" or "bridge"
+# direct = Asterisk <-> WhatsApp + Asterisk <-> LiveKit (independent)
+# bridge = Asterisk bridges WhatsApp <-> LiveKit
+poc_scenario: "direct"
+livekit_domain: "livekit-sip.example.com"
+wa_consumer_phone_number: "15557654321"
+# Password for Asterisk to authenticate to LiveKit SIP trunk and vice versa (On this demo both inbound and outbound use the same credentials, this can be different), can be different from sip_ua_password
+livekit_auth_password: "strongpassword" 

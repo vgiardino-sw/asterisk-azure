@@ -1,0 +1,102 @@
+; =============================================================================
+; pjsip-bridge.conf - PoC 2 "bridge"
+; Scenarios: WhatsApp -> Asterisk -> LiveKit (C2B bridged)
+;            LiveKit -> Asterisk -> WhatsApp (B2C bridged)
+; =============================================================================
+
+[transport-tls]
+type=transport
+protocol=tls
+bind=0.0.0.0:{{ sip_tls_port }}
+cert_file=/var/lib/asterisk/certs/fullchain.cer
+priv_key_file=/var/lib/asterisk/certs/cer.key
+method=sslv23
+allow_wildcard_certs=yes
+external_media_address={{ external_ip }}
+external_signaling_address={{ external_ip }}
+local_net={{ local_net }}
+
+[sdes_endpointtemplate](!)
+type=endpoint
+context=whatsapp
+disallow=all
+allow=OPUS
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=no
+media_use_received_transport=yes
+media_encryption=sdes
+
+[aortemplate](!)
+type=aor
+max_contacts=1
+remove_existing=yes
+
+; --- Meta SIP Gateway: inbound identify (C2B) ---
+
+[c2b-sip](sdes_endpointtemplate)
+
+[c2b-sip](aortemplate)
+
+[c2b-sip]
+type=identify
+endpoint=c2b-sip
+match_header=X-FB-External-Domain: wa.meta.vc
+
+; --- Meta SIP Gateway: WhatsApp trunk ---
+
+[whatsapp](sdes_endpointtemplate)
+type=endpoint
+transport=transport-tls
+disallow=all
+allow=opus,ulaw,alaw
+aors=whatsapp
+from_user=+{{ wa_business_phone_number }}
+from_domain={{ domain_name }}
+outbound_auth=whatsapp
+
+[whatsapp]
+type=aor
+contact=sip:wa.meta.vc
+
+[whatsapp]
+type=auth
+auth_type=userpass
+password={{ meta_sip_user_password }}
+username={{ wa_business_phone_number }}
+realm=*
+
+; --- LiveKit SIP trunk ---
+
+[livekit]
+type=endpoint
+transport=transport-tls
+context=from-livekit
+disallow=all
+allow=g722,ulaw,alaw,opus
+aors=livekit
+auth=livekit-auth
+outbound_auth=livekit-auth
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+media_use_received_transport=yes
+media_encryption=sdes
+from_domain={{ livekit_domain }}
+
+[livekit-auth]
+type=auth
+auth_type=userpass
+username=asterisk
+password={{ livekit_auth_password }}
+
+[livekit]
+type=aor
+contact=sip:{{ livekit_domain }}
+
+[livekit]
+type=identify
+endpoint=livekit
+match_header=X-LiveKit-Trunk: asterisk-outbound

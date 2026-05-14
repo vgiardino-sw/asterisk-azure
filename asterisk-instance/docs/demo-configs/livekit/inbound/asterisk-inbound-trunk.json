@@ -3,9 +3,6 @@
   "numbers": [
     "7000"
   ],
-  "allowedAddresses": [
-    "20.124.130.98/32"
-  ],
   "authUsername": "asterisk",
   "authPassword": "********",
   "krispEnabled": true,

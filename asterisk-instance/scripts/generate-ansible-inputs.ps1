@@ -82,6 +82,10 @@ sip_ua_password: "$($runtime.sip_ua_password)"
 meta_sip_user_password: "$($runtime.meta_sip_user_password)"
 local_net: "$($runtime.local_net)"
 external_ip: "$($runtime.external_ip)"
+poc_scenario: "$($runtime.poc_scenario)"
+livekit_domain: "$($runtime.livekit_domain)"
+wa_consumer_phone_number: "$($runtime.wa_consumer_phone_number)"
+livekit_auth_password: "$($runtime.livekit_auth_password)"
 "@
 
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $resolvedOutputInventory) | Out-Null

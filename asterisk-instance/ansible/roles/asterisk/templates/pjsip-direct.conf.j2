@@ -1,3 +1,9 @@
+; =============================================================================
+; pjsip-direct.conf - PoC 1 "direct"
+; Scenarios: Asterisk <-> WhatsApp (B2C-SIP, C2B)
+;            Asterisk <-> LiveKit (independent test calls)
+; =============================================================================
+
 [transport-tls]
 type=transport
 protocol=tls
@@ -32,6 +38,8 @@ type=aor
 max_contacts=1
 remove_existing=yes
 
+; --- SIP UA (softphone / Linphone) ---
+
 [1001](sdes_endpointtemplate)
 auth=1001_auth
 aors=1001
@@ -41,7 +49,8 @@ username=1001
 
 [1001](aortemplate)
 
-;This endpoint maps to an IVR for C2B calls
+; --- Meta SIP Gateway: inbound (C2B) ---
+
 [c2b-sip](sdes_endpointtemplate)
 
 [c2b-sip](aortemplate)
@@ -51,11 +60,13 @@ type=identify
 endpoint=c2b-sip
 match_header=X-FB-External-Domain: wa.meta.vc
 
-;special endpoint for Meta SIP Gateway integration
-;This endpoint maps to an IVR for B2C calls
+; --- Meta SIP Gateway: outbound (B2C) ---
+
 [b2c-sip](sdes_endpointtemplate)
 
 [b2c-sip](aortemplate)
+
+; --- Meta SIP Gateway: WhatsApp trunk ---
 
 [whatsapp](sdes_endpointtemplate)
 type=endpoint
@@ -78,6 +89,7 @@ password={{ meta_sip_user_password }}
 username={{ wa_business_phone_number }}
 realm=*
 
+; --- LiveKit SIP trunk ---
 
 [livekit]
 type=endpoint
@@ -86,25 +98,25 @@ context=from-livekit
 disallow=all
 allow=g722,ulaw,alaw,opus
 aors=livekit
-auth=livekit-auth
-outbound_auth=livekit-auth
+auth=livekit
+outbound_auth=livekit
 direct_media=no
 rtp_symmetric=yes
 force_rport=yes
 rewrite_contact=yes
 media_use_received_transport=yes
 media_encryption=sdes
-from_domain=azure-livekit.vgiardino.com
+from_domain={{ livekit_domain }}
 
-[livekit-auth]
+[livekit]
 type=auth
 auth_type=userpass
 username=asterisk
-password=strongpassword
+password={{ livekit_auth_password }}
 
 [livekit]
 type=aor
-contact=sip:azure-livekit.vgiardino.com
+contact=sip:{{ livekit_domain }}
 
 [livekit]
 type=identify

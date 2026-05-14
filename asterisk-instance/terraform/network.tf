@@ -19,7 +19,6 @@ resource "azurerm_public_ip" "this" {
   resource_group_name = azurerm_resource_group.this.name
   allocation_method   = "Static"
   sku                 = "Standard"
-  domain_name_label   = trimspace(var.public_ip_dns_label) != "" ? lower(replace(var.public_ip_dns_label, "_", "-")) : null
   tags                = local.tags
 }
 

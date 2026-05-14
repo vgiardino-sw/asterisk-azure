@@ -126,6 +126,36 @@ variable "meta_sip_user_password" {
   sensitive   = true
 }
 
+variable "wa_consumer_phone_number" {
+  description = "Destination phone number for B2C test calls, E.164 without plus (example: 5493875761526)."
+  type        = string
+  default     = ""
+}
+
+variable "livekit_auth_password" {
+  description = "Password for Asterisk to authenticate to LiveKit SIP trunk and vice versa."
+  type        = string
+  sensitive   = true
+  default     = "strongpassword"
+}
+
+variable "livekit_domain" {
+  description = "LiveKit SIP server FQDN used for SIP trunk contact and from_domain."
+  type        = string
+  default     = ""
+}
+
+variable "poc_scenario" {
+  description = "PoC scenario to deploy: 'direct' (Asterisk <-> WhatsApp + LiveKit independently) or 'bridge' (Asterisk bridges WhatsApp <-> LiveKit)."
+  type        = string
+  default     = "direct"
+
+  validation {
+    condition     = contains(["direct", "bridge"], var.poc_scenario)
+    error_message = "poc_scenario must be either 'direct' or 'bridge'."
+  }
+}
+
 variable "vnet_cidr" {
   description = "Virtual network CIDR block."
   type        = string
@@ -136,11 +166,6 @@ variable "subnet_cidr" {
   description = "Subnet CIDR block."
   type        = string
   default     = "10.42.1.0/24"
-}
-
-variable "public_ip_dns_label" {
-  description = "public ip dns label."
-  type        = string
 }
 
 variable "livekit_api_source_ips" {
