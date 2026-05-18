@@ -9,7 +9,6 @@ override.tf.json
 
 terraform/env/*.tfvars
 !terraform/env/*.example
-terraform/env/backend.hcl
 terraform/terraform.rc
 
 ansible/inventory/hosts.yml
