@@ -1,0 +1,17 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+terraform/env/*.tfvars
+!terraform/env/*.example
+terraform/env/backend.hcl
+terraform/terraform.rc
+
+ansible/inventory/hosts.yml
+ansible/group_vars/*.yml
+!ansible/group_vars/*.example.yml

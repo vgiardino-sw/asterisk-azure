@@ -1,14 +1,1 @@
-.terraform/
-*.tfstate
-*.tfstate.*
-crash.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-livekit-instance/terraform/env/*.tfvars
-!livekit-instance/terraform/env/*.example
-livekit-instance/terraform/terraform.rc
-livekit-instance/ansible/inventory/hosts.yml
-livekit-instance/ansible/group_vars/*.yml
 .venv
