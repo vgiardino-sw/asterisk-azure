@@ -1,0 +1,12 @@
+{
+  "trunk": {
+    "name": "telnyx-outbound",
+    "address": "sip.telnyx.com",
+    "numbers": ["+<YOUR-TELNYX-PHONE-NUMBER>"],
+    "auth_username": "<YOUR-TELNYX-USERNAME>",
+    "auth_password": "<YOUR-TELNYX-PASSWORD>",
+    "headers_to_attributes": {
+      "X-Telnyx-Username": "<YOUR-TELNYX-USERNAME>"
+    }
+  }
+}

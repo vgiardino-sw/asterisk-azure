@@ -1,0 +1,13 @@
+---
+- name: Configure LiveKit SIP on Azure VM
+  hosts: livekit_sip_vm
+  become: true
+  roles:
+    - role: livekit_common
+      tags: livekit_common
+
+    - role: livekit_certbot
+      tags: livekit_certbot
+
+    - role: livekit_compose
+      tags: livekit_compose

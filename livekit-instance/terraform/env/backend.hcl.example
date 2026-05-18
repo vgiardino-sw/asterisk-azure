@@ -1,0 +1,4 @@
+resource_group_name  = "rg-tfstate-livekit"
+storage_account_name = "sttfstatelivekit"
+container_name       = "tfstate"
+key                  = "livekit-sip-dev.tfstate"

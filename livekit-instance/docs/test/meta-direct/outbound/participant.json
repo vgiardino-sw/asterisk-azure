@@ -1,0 +1,8 @@
+{
+  "sip_number": "+<YOUR-META-PHONE-NUMBER>",
+  "sip_trunk_id": "<OUTBOUND-TRUNK-ID>",
+  "sip_call_to": "+<DESTINATION-PHONE-NUMBER>",
+  "room_name": "open-room",
+  "participant_identity": "wpp-participant",
+  "wait_until_answered": true
+}

@@ -1,0 +1,9 @@
+{
+  "sip_number": "+17438882976",
+  "sip_trunk_id": "ST_dQFaqEqQT4xc",
+  "sip_call_to": "+5493875761526",
+  "room_name": "open-room",
+  "participant_identity": "sip-test",
+  "participant_name": "Telnyx outbound test",
+  "wait_until_answered": true
+}

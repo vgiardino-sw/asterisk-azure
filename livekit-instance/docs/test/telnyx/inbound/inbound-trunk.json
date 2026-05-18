@@ -1,0 +1,6 @@
+{
+  "trunk": {
+    "name": "telnyx-inbound",
+    "numbers": ["+<YOUR-TELNYX-PHONE-NUMBER>"]
+  }
+}

@@ -1,0 +1,28 @@
+---
+- name: Check if Let's Encrypt cert already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ livekit_fqdn }}/fullchain.pem"
+  register: letsencrypt_cert
+
+- name: Stop LiveKit SIP stack before certbot standalone
+  ansible.builtin.command: docker compose down
+  args:
+    chdir: "{{ livekit_sip_dir }}"
+  register: compose_down
+  changed_when: compose_down.rc == 0
+  failed_when: false
+  when: not letsencrypt_cert.stat.exists
+
+- name: Request cert with certbot standalone
+  ansible.builtin.command: >-
+    certbot certonly --standalone --non-interactive --agree-tos
+    --email {{ letsencrypt_email }} -d {{ livekit_fqdn }}
+  when: not letsencrypt_cert.stat.exists
+  register: certbot_result
+  changed_when: certbot_result.rc == 0
+
+- name: Install cert renewal deploy hook
+  ansible.builtin.template:
+    src: cert-renew-hook.sh.j2
+    dest: /etc/letsencrypt/renewal-hooks/deploy/livekit-sip-restart.sh
+    mode: '0755'

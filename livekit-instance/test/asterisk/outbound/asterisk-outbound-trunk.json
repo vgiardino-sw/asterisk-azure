@@ -1,0 +1,16 @@
+{
+  "trunk": {
+    "name": "asterisk-oubtound",
+    "address": "asterisk.vgiardino.com:5061",
+    "transport": "SIP_TRANSPORT_TLS",
+    "numbers": [
+      "+10000000000"
+    ],
+    "authUsername": "asterisk",
+    "authPassword": "strongpassword",
+    "headers": {
+      "X-LiveKit-Trunk": "asterisk-outbound"
+    },
+    "mediaEncryption": "SIP_MEDIA_ENCRYPT_ALLOW"
+  }
+}

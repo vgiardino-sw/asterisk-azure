@@ -1,0 +1,9 @@
+{
+  "sip_number": "+<YOUR-TELNYX-PHONE-NUMBER>",
+  "sip_trunk_id": "<OUTBOUND-TRUNK-ID>",
+  "sip_call_to": "+<DESTINATION-PHONE-NUMBER>",
+  "room_name": "open-room",
+  "participant_identity": "sip-test",
+  "participant_name": "Telnyx outbound test",
+  "wait_until_answered": true
+}

@@ -6,10 +6,9 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-terraform/env/*.tfvars
-!terraform/env/*.example
-terraform/terraform.rc
-ansible/inventory/hosts.yml
-ansible/group_vars/vars.generated.yml
-ansible/group_vars/vars.yml
+livekit-instance/terraform/env/*.tfvars
+!livekit-instance/terraform/env/*.example
+livekit-instance/terraform/terraform.rc
+livekit-instance/ansible/inventory/hosts.yml
+livekit-instance/ansible/group_vars/*.yml
 .venv

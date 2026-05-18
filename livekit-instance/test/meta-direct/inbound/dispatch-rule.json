@@ -1,0 +1,21 @@
+
+{
+  "dispatch_rule":{
+    "rule": {
+      "dispatchRuleIndividual": {
+        "roomPrefix": "call-"
+      }
+    },
+    "trunkIds": [
+      "ST_URwmKHzjVL3U"
+    ],
+    "name": "meta-dispatch",
+    "roomConfig": {
+      "agents": [
+        {
+          "agentName": "telephony-agent"
+        }
+      ]
+    }
+  }
+}
