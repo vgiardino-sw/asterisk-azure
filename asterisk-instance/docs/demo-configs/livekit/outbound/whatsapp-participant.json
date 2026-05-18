@@ -1,6 +1,6 @@
 {
   "sip_trunk_id": "ST_T6WPTyt4NraZ",
-  "sip_call_to": "+5493875761526",
+  "sip_call_to": "+<wa_consumer_phone_number>",
   "room_name": "test-room",
   "participant_identity": "asterisk-7001",
   "sip_number": "+10000000000"

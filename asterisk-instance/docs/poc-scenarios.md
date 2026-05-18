@@ -85,44 +85,21 @@ Asterisk connects independently to both Meta WhatsApp SIP Gateway and a LiveKit 
 
 ### Call Flows
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  B2C-SIP: Asterisk → WhatsApp                                              │
-│                                                                             │
-│  Softphone ──► Asterisk (ext b2c-sip) ──► Meta SIP Gateway ──► WhatsApp    │
-│                                                                             │
-│  Dialplan: [whatsapp] context, extension "b2c-sip"                          │
-│  PJSIP endpoints: 1001 (softphone), whatsapp (trunk)                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+#### WhatsApp → Asterisk → Softphone 1001
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  C2B: WhatsApp → Asterisk                                                   │
-│                                                                             │
-│  WhatsApp User ──► Meta SIP Gateway ──► Asterisk (c2b-sip) ──► Softphone   │
-│                                                                             │
-│  Dialplan: [whatsapp] context, matches +<wa_business_phone_number>          │
-│            Goto(c2b-sub-dial,s,1) → Dial(PJSIP/1001)                        │
-│  PJSIP endpoints: c2b-sip (identify via X-FB-External-Domain), 1001        │
-└─────────────────────────────────────────────────────────────────────────────┘
+![WhatsApp → Asterisk → Softphone 1001](diagrams/direct-mode/wpp-asterisk-sofphone.png)
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Asterisk → LiveKit                                                         │
-│                                                                             │
-│  Softphone ──► Asterisk (ext 7000) ──► LiveKit SIP Server                   │
-│                                                                             │
-│  Dialplan: [whatsapp] context, extension "7000"                             │
-│  PJSIP endpoints: 1001 (softphone), livekit (trunk)                         │
-└─────────────────────────────────────────────────────────────────────────────┘
+#### Asterisk → WhatsApp B2C direct call
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  LiveKit → Asterisk                                                         │
-│                                                                             │
-│  LiveKit SIP Server ──► Asterisk (ext 7001) ──► Softphone                   │
-│                                                                             │
-│  Dialplan: [from-livekit] context, extension "7001"                         │
-│  PJSIP endpoints: livekit (identify via X-LiveKit-Trunk), 1001             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![Asterisk → WhatsApp B2C direct call](diagrams/direct-mode/asterisk-wpp-b2c.png)
+
+#### Asterisk → LiveKit call
+
+![Asterisk → LiveKit call](diagrams/direct-mode/asteriks-livekit.png)
+
+#### LiveKit → Asterisk → Softphone 1001
+
+![LiveKit → Asterisk → Softphone 1001](diagrams/direct-mode/livekit-asterisk-sofphone.png)
 
 ### PJSIP Endpoints Loaded
 
@@ -171,27 +148,13 @@ Asterisk acts as a bridge between Meta WhatsApp SIP Gateway and LiveKit. No soft
 
 ### Call Flows
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  WhatsApp → LiveKit (C2B bridged)                                           │
-│                                                                             │
-│  WhatsApp User ──► Meta SIP GW ──► Asterisk (c2b-sip) ──► LiveKit          │
-│                                                                             │
-│  Dialplan: [whatsapp] context, matches +<wa_business_phone_number>          │
-│            Dial(PJSIP/7000@livekit,30)                                      │
-│  PJSIP endpoints: c2b-sip (identify), livekit (trunk)                       │
-└─────────────────────────────────────────────────────────────────────────────┘
+#### C2B flow: WhatsApp → Asterisk → LiveKit
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  LiveKit → WhatsApp (B2C bridged)                                           │
-│                                                                             │
-│  LiveKit Agent ──► Asterisk (from-livekit) ──► Meta SIP GW ──► WhatsApp     │
-│                                                                             │
-│  Dialplan: [from-livekit] context, matches +X. pattern                      │
-│            Dial(PJSIP/${EXTEN}@whatsapp,60)                                 │
-│  PJSIP endpoints: livekit (identify), whatsapp (trunk)                      │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+![C2B flow](diagrams/bridge-mode/c2b-flow.png)
+
+#### B2C flow: LiveKit → Asterisk → WhatsApp
+
+![B2C flow](diagrams/bridge-mode/b2c-flow.png)
 
 ### PJSIP Endpoints Loaded
 
@@ -262,12 +225,12 @@ sudo asterisk -rx "dialplan show"
 | `external_ip`              | Public IP of the Asterisk VM             | `20.124.1.120`                |
 | `local_net`                | Local subnet (for NAT traversal)         | `10.42.1.0/24`                |
 | `domain_name`              | Domain for SIP From header               | `example.com`                 |
-| `wa_business_phone_number` | WhatsApp Business phone number (no `+`)  | `5493875168717`               |
+| `wa_business_phone_number` | WhatsApp Business phone number (no `+`)  | `5498765432`               |
 | `sip_ua_password`          | Password for SIP UA endpoints (1001)     | —                             |
 | `meta_sip_user_password`   | Meta SIP Gateway authentication password | —                             |
 | `livekit_domain`           | LiveKit SIP server FQDN                  | `azure-livekit.example.com`   |
 | `livekit_auth_password`    | Asterisk ↔ LiveKit SIP trunk auth password (shared by inbound/outbound) | —     |
-| `wa_consumer_phone_number` | Destination phone number for B2C test calls (E.164, no `+`) | `5493875761526` |
+| `wa_consumer_phone_number` | Destination phone number for B2C test calls (E.164, no `+`) | `549123456` |
 
 ---
 
